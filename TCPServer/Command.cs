@@ -6,6 +6,6 @@ namespace TCPServer
 {
     public enum Command
     {
-        Print
+        Print, SendMessage, Broadcast, SetId
     }
 }

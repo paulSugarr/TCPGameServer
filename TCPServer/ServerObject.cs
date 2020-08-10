@@ -10,33 +10,33 @@ namespace TCPServer
 {
     public class ServerObject
     {
-        static TcpListener tcpListener;
-        List<ClientObject> clients = new List<ClientObject>();
+        private static TcpListener _tcpListener;
+        private List<ClientObject> _clients = new List<ClientObject>();
 
         protected internal void AddConnection(ClientObject clientObject)
         {
-            clients.Add(clientObject);
+            _clients.Add(clientObject);
         }
         protected internal void RemoveConnection(string id)
         {
-            ClientObject client = clients.FirstOrDefault(c => c.Id == id);
+            ClientObject client = _clients.FirstOrDefault(c => c.Id == id);
             if (client != null)
-                clients.Remove(client);
+                _clients.Remove(client);
         }
 
         protected internal void Listen()
         {
             try
             {
-                tcpListener = new TcpListener(IPAddress.Any, 8888);
-                tcpListener.Start();
+                _tcpListener = new TcpListener(IPAddress.Any, 8888);
+                _tcpListener.Start();
                 Console.WriteLine("Server run");
 
                 while (true)
                 {
-                    TcpClient tcpClient = tcpListener.AcceptTcpClient();
+                    TcpClient tcpClient = _tcpListener.AcceptTcpClient();
 
-                    ClientObject clientObject = new ClientObject(tcpClient, this);
+                    ClientObject clientObject = new ClientObject(tcpClient, this, _clients.Count.ToString());
                     Thread clientThread = new Thread(new ThreadStart(clientObject.Process));
                     clientThread.Start();
                 }
@@ -48,38 +48,35 @@ namespace TCPServer
             }
         }
 
-        // трансляция сообщения подключенным клиентам
-        protected internal void BroadcastMessage(string message, string id)
+        protected internal void BroadcastMessage(byte[] message, string id)
         {
-            byte[] data = Encoding.Unicode.GetBytes(message);
-            for (int i = 0; i < clients.Count; i++)
+            for (int i = 0; i < _clients.Count; i++)
             {
-                if (clients[i].Id != id) 
+                if (_clients[i].Id != id) 
                 {
-                    clients[i].Stream.Write(data, 0, data.Length);
+                    _clients[i].Stream.Write(message, 0, message.Length);
                 }
             }
         }
 
-        protected internal void AnswerMessage(string message, string id)
+        protected internal void SendMessage(byte[] message, string id)
         {
-            byte[] data = Encoding.Unicode.GetBytes(message);
-            for (int i = 0; i < clients.Count; i++)
+            for (int i = 0; i < _clients.Count; i++)
             {
-                if (clients[i].Id == id)
+                if (_clients[i].Id == id)
                 {
-                    clients[i].Stream.Write(data, 0, data.Length);
+                    _clients[i].Stream.Write(message, 0, message.Length);
                 }
             }
         }
 
         protected internal void Disconnect()
         {
-            tcpListener.Stop();
+            _tcpListener.Stop();
 
-            for (int i = 0; i < clients.Count; i++)
+            for (int i = 0; i < _clients.Count; i++)
             {
-                clients[i].Close();
+                _clients[i].Close();
             }
             Environment.Exit(0);
         }

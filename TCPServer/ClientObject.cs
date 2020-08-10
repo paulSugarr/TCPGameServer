@@ -10,30 +10,44 @@ namespace TCPServer
     {
         protected internal string Id { get; private set; }
         protected internal NetworkStream Stream { get; private set; }
-        public string userName = "<unnamed>";
-        private TcpClient client;
-        public ServerObject server;
+        public string UserName = "<unnamed>";
+        private TcpClient _client;
+        public ServerObject Server;
 
-        public ClientObject(TcpClient tcpClient, ServerObject serverObject)
+        public ClientObject(TcpClient tcpClient, ServerObject serverObject, string id)
         {
-            Id = Guid.NewGuid().ToString();
-            client = tcpClient;
-            server = serverObject;
+            Id = id;
+            _client = tcpClient;
+            Server = serverObject;
             serverObject.AddConnection(this);
-            Stream = client.GetStream();
+            Stream = _client.GetStream();
+
         }
 
 
 
         public void Process()
         {
+            try
+            {
+                OnConnect();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                Server.RemoveConnection(this.Id);
+                Close();
+                return;
+            }
+
+
             while (true)
             {
 
                 try
                 {
                     var command = GetMessage();
-                    CommandManager.TryExecute(command, this);
+                    CommandManager.TryExecute(command, this, Server);
                 }
                 catch (Exception e)
                 {
@@ -41,7 +55,7 @@ namespace TCPServer
                     break;
                 }
             }
-            server.RemoveConnection(this.Id);
+            Server.RemoveConnection(this.Id);
             Close();
         }
 
@@ -57,7 +71,7 @@ namespace TCPServer
                 bytes = Stream.Read(data, 0, data.Length);
 
             }
-            while (Stream.DataAvailable && client.Client.Connected);
+            while (Stream.DataAvailable && _client.Client.Connected);
             return data;
         }
 
@@ -65,8 +79,12 @@ namespace TCPServer
         {
             if (Stream != null)
                 Stream.Close();
-            if (client != null)
-                client.Close();
+            if (_client != null)
+                _client.Close();
+        }
+        private void OnConnect()
+        {
+            CommandManager.SendId(this, Server);
         }
     }
 }
